@@ -56,29 +56,27 @@ def gather_reference(fname, page, ref_list, header_pattern):
 re_section = re.compile(r'(?<!\[)?“.+\n?.+\n?”(?!\])', re.MULTILINE)
 def insert_reference(fname, ref_list, page, section_pattern, **kwargs):
     link_bank = set()
-    for quoted_match in re.finditer(section_pattern, page):
+    for index, quoted_match in enumerate(re.finditer(section_pattern, page)):
         # strip any whitespace to be replaced with a newline
-        quoted_string = quoted_match.group()
-        match = quoted_match.group().strip('“”').replace('\n', ' ')
+        quoted_string = quoted_match.group(index)
+        match_key = quoted_match.group(index).strip('“”').replace('\n', ' ')
         # ignore section reference if starts with lowercase
-        if match[0].islower():
+        if match_key[0].islower():
             continue
-        if match in ref_list:
+        if match_key in ref_list:
             # create '#standalone_id' link if reference is on the same page
-            section_id = ref_list[match]['anchor-id']
-            if fname == ref_list[match]['filename']:
+            section_id = ref_list[match_key]['anchor-id']
+            if fname == ref_list[match_key]['filename']:
                 section_link = f'#{section_id}'
-                replace_as = f'[{quoted_match}]({section_link})'
+                replace_as = f'[{quoted_string}]({section_link})'
             else:
-                section_link = f'{ref_list[match]["filename"]}.html#{section_id}'
-                replace_as = f'[{quoted_match}][{section_id}]'
+                section_link = f'{ref_list[match_key]["filename"]}.html#{section_id}'
+                replace_as = f'[{quoted_string}][{section_id}]'
                 link_bank.add(f'[{section_id}][{section_link}]')
             if kwargs.get('dry-run'):
                 print(quoted_string, ' -> ', replace_as)
             else:
-                print(quoted_string)
-                print(replace_as)
-                re.sub(quoted_string, replace_as, page)
+                page = page.replace(quoted_string, replace_as, 1)
         elif kwargs.get('flag_dead_links'):
             print(f'{quoted_match}: possible reference to non-existent section')
         return page + '\n' + '\n'.join(link_bank)
@@ -114,10 +112,10 @@ you’ll have a better idea of what the problem is with the code.[“Concatenati
 with the `+` Operator or the `format!` Macro”]
 [concatenation-with-the--operator-or-the-format-macro][ch08-02-strings.html#concatenation-with-the--operator-or-the-format-macro]""")
 insert_in = insert_reference(*(test_insert), re_section)
-for _in, _out in zip(insert_in.splitlines(), insert_out.splitlines()):
-    if _in != _out:
-        print(_in)
-        print(_out)
+# for _in, _out in zip(insert_in.splitlines(), insert_out.splitlines()):
+    # if _in != _out:
+        # print(_in)
+        # print(_out)
 assert insert_reference(*(test_insert), re_section) == insert_out
 # for fname, doc in list(src)[:2]:
     # print(doc)
