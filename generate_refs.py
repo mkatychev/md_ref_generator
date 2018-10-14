@@ -58,7 +58,8 @@ def insert_reference(fname, ref_list, page, section_pattern, **kwargs):
     link_bank = set()
     for quoted_match in re.finditer(section_pattern, page):
         # strip any whitespace to be replaced with a newline
-        match = quoted_match.group().strip('“”')
+        quoted_string = quoted_match.group()
+        match = quoted_match.group().strip('“”').replace('\n', ' ')
         # ignore section reference if starts with lowercase
         if match[0].islower():
             continue
@@ -73,9 +74,11 @@ def insert_reference(fname, ref_list, page, section_pattern, **kwargs):
                 replace_as = f'[{quoted_match}][{section_id}]'
                 link_bank.add(f'[{section_id}][{section_link}]')
             if kwargs.get('dry-run'):
-                print(quoted_match, ' -> ', replace_as)
+                print(quoted_string, ' -> ', replace_as)
             else:
-                re.sub(quoted_match, replace_as)
+                print(quoted_string)
+                print(replace_as)
+                re.sub(quoted_string, replace_as, page)
         elif kwargs.get('flag_dead_links'):
             print(f'{quoted_match}: possible reference to non-existent section')
         return page + '\n' + '\n'.join(link_bank)
@@ -110,7 +113,12 @@ messages are useful to document what an assertion means; when a test fails,
 you’ll have a better idea of what the problem is with the code.[“Concatenation
 with the `+` Operator or the `format!` Macro”]
 [concatenation-with-the--operator-or-the-format-macro][ch08-02-strings.html#concatenation-with-the--operator-or-the-format-macro]""")
-print(insert_reference(*(test_insert), re_section))
+insert_in = insert_reference(*(test_insert), re_section)
+for _in, _out in zip(insert_in.splitlines(), insert_out.splitlines()):
+    if _in != _out:
+        print(_in)
+        print(_out)
+assert insert_reference(*(test_insert), re_section) == insert_out
 # for fname, doc in list(src)[:2]:
     # print(doc)
     # with open(doc, 'r') as file:
