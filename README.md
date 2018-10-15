@@ -1,6 +1,6 @@
 # md-ref-generator
 
-This is a python3 command line utility to automate validating and generating section references for markdown documents.
+This is a python3 command line utility to automate validating and generating section references for markdown documents currently intended to be used for [The Rust Programming Language Book](https://github.com/rust-lang/book).
 
 * A section in markdown is considered any line that starts with 1 or more `#` followed by a space.
 
