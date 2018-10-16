@@ -24,7 +24,6 @@ def create_entry(header, fname):
         'anchor-id': format_anchor(header)}
             }
 
-
 def gather_reference(fname, page, ref_list, header_pattern, common_headers=['Summary']):
     inside_codeblock = False
     for line in page:
@@ -36,7 +35,7 @@ def gather_reference(fname, page, ref_list, header_pattern, common_headers=['Sum
             inside_codeblock = inside_codeblock ^ True
 
         if inside_codeblock is False and re.match(re_header, line):
-            formatted_title = line.lstrip('# ').rstrip('\n')
+            formatted_title = re.match(re_header, line).group(1)
             if formatted_title not in common_headers:
                 yield create_entry(formatted_title, fname)
     return
@@ -101,7 +100,9 @@ def insert_reference(fname, ref_list, page, section_pattern, **kwargs):
 # regex patterns
 
 # identify headers starting with one to three hashes
-re_header = re.compile('^#{1,4} .+\n?$')
+re_header = re.compile('^#{1,4} (?:Appendix [A-Z]: )?(.+)\n?$')
+assert re.search(re_header, '## Appendix C: Derivable Traits\n'
+                 ).groups() == ('Derivable Traits',)
 # identify passages surrounded by culry quotes
 re_section = re.compile('(?<!\[)“[^”]+”(?!\])', re.MULTILINE)
 section_test = ['“Too high”', '“Too\nslow”', '“Too low”']
