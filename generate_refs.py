@@ -2,8 +2,9 @@
 import re
 import os
 import argparse
+import sys
 from pprint import pprint
-from collections import defaultdict, OrderedDict
+from collections import defaultdict
 
 # This python script is meant to autogenerate markdown links
 # and validate section references for the markdown rust-book
@@ -14,7 +15,7 @@ def format_anchor(line):
 
 
 def normalize_header(header):
-    return ''.join(i for i in header if i.isspace() or i.isalpha())
+    return re.sub('(\n>)?\s+', ' ', header)
 
 
 def create_entry(header, fname):
@@ -42,15 +43,14 @@ def gather_reference(fname, page, ref_list, header_pattern, common_headers=['Sum
 
 
 def insert_reference(fname, ref_list, page, section_pattern, **kwargs):
-    modified = False
+    page_modified = False
     replaced = set()
     link_bank = set()
     dead_links = []
     dry_runs = []
     for quoted_match in re.finditer(section_pattern, page):
-        # strip any whitespace to be replaced with a newline
-        quoted_string = quoted_match.group()
-        match_key = normalize_header(quoted_match.group().strip('“”').replace('\n', ' '))
+        quoted_string = quoted_match.group(0)
+        match_key = normalize_header(quoted_string).strip('“”')
         # ignore section reference if starts with lowercase
         if match_key[0].islower() or quoted_string in replaced:
             continue
@@ -72,13 +72,14 @@ def insert_reference(fname, ref_list, page, section_pattern, **kwargs):
             else:
                 page = page.replace(quoted_string, replace_as)
                 replaced.add(quoted_string)
-                modified = True
+                page_modified = True
         # handle optional flagging of dead links
-        elif kwargs.get('flag_dead_links'):
+        elif kwargs.get('flag_dead_links') or kwargs.get('generate_flaglist'):
             dead_links.append(quoted_string)
-    if kwargs.get('quiet') is False:
+    if not kwargs.get('quiet') and kwargs.get('dry_run'):
         if dry_runs:
-            filler = (60 - len(fname))//2
+            # for now handle any filenames longer than 60 char with abs values
+            filler = abs(60 - len(fname))//2
             print(fname + '=#'*filler)
             for replacement in dry_runs:
                 print(replacement[0])
@@ -86,49 +87,53 @@ def insert_reference(fname, ref_list, page, section_pattern, **kwargs):
                 print(' v'*20)
                 print(replacement[1])
                 print('\n')
-        if dead_links:
+    if dead_links:
+        normalized_dead = set(normalize_header(i) for i in dead_links)
+        if kwargs.get('flag_dead_links'):
             print(fname + ' dead links:')
             for link in dead_links:
                 print(f'[{link}] is possibly a dead link')
-    if modified:
-        return page + '\n' + '\n'.join(sorted(link_bank))
+        if kwargs.get('generate_flaglist'):
+            return normalized_dead
+    elif page_modified:
+        return page + '\n'.join(sorted(link_bank)) + '\n'
 
 # regex patterns
 
 # identify headers starting with one to three hashes
 re_header = re.compile('^#{1,4} .+\n?$')
 # identify passages surrounded by culry quotes
-re_section = re.compile(r'(?<!\[)?“.+\n?.+\n?”(?!\])', re.MULTILINE)
+re_section = re.compile('(?<!\[)“[^”]+”(?!\])', re.MULTILINE)
+section_test = ['“Too high”', '“Too\nslow”', '“Too low”']
+assert re.findall(
+    re_section, '“Too high” or “Too\nslow” or “Too low”') == section_test
+
 # # # # # # # # # # # # # # #   
 # Assertion Tests
 # # # # # # # # # # # # # # #   
-
 # format_achor unit test
 assert format_anchor(
     'Preventing Reference Cycles: Turning an Rc<T> into a Weak<T>') == (
         'preventing-reference-cycles-turning-an-rct-into-a-weakt')
-
 # it is necessary to strip nonalphas after the hypens to mirror present mdbook
 # functionality when a header string ends with a spaced separated nonalpha
 assert format_anchor(
     'Specify multiple traits with +') == (
         'specify-multiple-traits-with-')
-
 # create_entry unit test
-create_e_str = 'Using `Result<T, E>` in tests'
+create_e_str = 'Using `Result<T, E>`\n in tests'
 create_e_fname = 'ch11-01-writing-tests'
 create_entry_out = {
-    'Using ResultT E in tests': {
+    'Using `Result<T, E>` in tests': {
         'filename': 'ch11-01-writing-tests',
         'anchor-id': 'using-resultt-e-in-tests'
     }
 }
 assert create_entry(create_e_str, create_e_fname) == create_entry_out
-
 # insert_reference unit test
 test_insert = (
     'ch11-01-writing-test',
-    {'Concatenation with the  Operator or the format Macro': {
+    {'Concatenation with the `+` Operator or the `format!` Macro': {
         'filename': 'ch08-02-strings',
         'anchor-id': 'concatenation-with-the--operator-or-the-format-macro'
     }
@@ -141,10 +146,10 @@ Operator or the `format!` Macro” section), so you can pass a format string tha
 contains `{}` placeholders and values to go in those placeholders. Custom
 messages are useful to document what an assertion means; when a test fails,
 you’ll have a better idea of what the problem is with the code.[“Concatenation
-with the `+` Operator or the `format!` Macro”]""")
+with the `+` Operator or the `format!` Macro”]
+""")
 )
-insert_out = (
-    """You can also add a custom message to be printed with the failure message as
+insert_out = ("""You can also add a custom message to be printed with the failure message as
 optional arguments to the `assert!`, `assert_eq!`, and `assert_ne!` macros. Any
 arguments specified after the one required argument to `assert!` or the two
 required arguments to `assert_eq!` and `assert_ne!` are passed along to the
@@ -154,7 +159,8 @@ contains `{}` placeholders and values to go in those placeholders. Custom
 messages are useful to document what an assertion means; when a test fails,
 you’ll have a better idea of what the problem is with the code.[“Concatenation
 with the `+` Operator or the `format!` Macro”]
-[concatenation-with-the--operator-or-the-format-macro]: ch08-02-strings.html#concatenation-with-the--operator-or-the-format-macro""")
+[concatenation-with-the--operator-or-the-format-macro]: ch08-02-strings.html#concatenation-with-the--operator-or-the-format-macro
+""")
 
 def line_differ(func_in, expected_out):
     for func, out in zip(func_in.splitlines(), expected_out.splitlines()):
@@ -164,6 +170,7 @@ def line_differ(func_in, expected_out):
             print('expected output:')
             print(out)
 
+# print(line_differ(insert_reference(*(test_insert), re_section), insert_out))
 assert insert_reference(*(test_insert), re_section) == insert_out
 
 
@@ -173,8 +180,16 @@ def main(src_input, **kwargs):
     src = []
 
     def generate_filepaths(in_paths):
-        return ((file.rstrip('.md'), os.path.join(in_paths, file))
+        return ((file.replace('.md', ''), os.path.join(in_paths, file))
                 for file in os.listdir(in_paths) if file.endswith('.md'))
+
+    def generate_flaglist(array, out_file):
+        assert type(array) != str
+        if os.path.exists(out_file):
+            raise FileExistsError('there is already a file present')
+        with open(out_file, 'w') as file:
+            # write flaglist entry as commented
+            file.writelines(f'# {i}\n' for i in sorted(array))
 
     for path in src_input:
         if os.path.isdir(path):
@@ -187,31 +202,38 @@ def main(src_input, **kwargs):
         else:
             raise FileNotFoundError(path)
 
-
-    # src.sort()
-    heading_list = defaultdict(OrderedDict)
+    # File parsing starts here
+    heading_list = defaultdict(dict)
+    flaglist_set = set()
     for fname, doc in src:
         with open(doc, 'r') as file:
             pagelines = file.readlines()
         for ref in gather_reference(fname, pagelines, heading_list, re_header):
             heading_list.update(ref)
 
-    if kwargs.get('references') and kwargs.get('quiet') is False:
+    if kwargs.get('references'):
         pprint(heading_list)
 
     for fname, doc in src:
         with open(doc, 'r') as file:
             str_page = file.read()
         result = insert_reference(fname, heading_list, str_page, re_section, **kwargs)
-        if kwargs.get('dry_run') is False and result:
+        if kwargs.get('generate_flaglist') and result:
+            flaglist_set.update(result)
+        # if this is not a dry run or a flaglist is generated and there are results
+        elif kwargs.get('dry_run') is False and result:
             with open(doc, 'w') as file:
                 file.write(result)
+        del result
+    # if a nonzero flaglist collection exists
+    if flaglist_set:
+        generate_flaglist(flaglist_set, kwargs['generate_flaglist'])
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser( description=(
         'Create and validate rust-book mentions of other sections'))
-    parser.add_argument('md_directory', nargs='*', type=str,
+    parser.add_argument('md_directory', nargs='+', type=str,
         help='desired input filepath, can be any number of filepaths and valid files')
     parser.add_argument('-f', '--flag-dead-links', action='store_true',
         help='flag links that potentially reference sections not present in the book')
@@ -223,10 +245,14 @@ if __name__ == '__main__':
         help='ignore file endings when passing individual files')
     parser.add_argument( '-r', '--references', action='store_true',
         help='display mapped dictionary of genereated references')
+    parser.add_argument('--generate-flaglist', action='store',
+        help='write a line separated list of all dead links to specified filepath')
     args = parser.parse_args()
+    args.generate_flaglist = (lambda x: os.path.realpath(x) if x else None)(args.generate_flaglist)
     main(args.md_directory,
          flag_dead_links=args.flag_dead_links,
          dry_run=args.dry_run,
          quiet=args.quiet,
          ignore_md=args.ignore_md,
-         references=args.references)
+         references=args.references,
+         generate_flaglist=args.generate_flaglist)

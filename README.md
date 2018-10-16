@@ -12,7 +12,8 @@ This is a python3 command line utility to automate validating and generating sec
 
 ```
 usage: generate_refs.py [-h] [-f] [-d] [-q] [-i] [-r]
-                        [md_directory [md_directory ...]]
+                        [--generate-flaglist GENERATE_FLAGLIST]
+                        md_directory [md_directory ...]
 
 Create and validate rust-book mentions of other sections
 
@@ -30,7 +31,9 @@ optional arguments:
   -q, --quiet           do not print optional args to console
   -i, --ignore-md       ignore file endings when passing individual files
   -r, --references      display mapped dictionary of genereated references
-
+  --generate-flaglist GENERATE_FLAGLIST
+                        write a line separated list of all dead links to
+                        specified filepath
 ```
 
 ## Examples
@@ -65,3 +68,6 @@ produces an output where only references in both files are considered:
 	Conditionals with Match Guards”](#extra-conditionals-with-match-guards)
 	
 ```
+
+# TODO
+* add whitelist filter intake
