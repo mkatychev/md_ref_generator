@@ -11,11 +11,11 @@ from collections import defaultdict
 
 
 def format_anchor(line):
-    return re.sub('[^\w-]+', '', '-'.join(line.split())).lower()
+    return re.sub(r'[^\w-]+', '', '-'.join(line.split())).lower()
 
 
 def normalize_header(header):
-    return re.sub('(\n>)?\s+', ' ', header)
+    return re.sub(r'(\n>)?\s+', ' ', header)
 
 
 def create_entry(header, fname):
@@ -100,11 +100,11 @@ def insert_reference(fname, ref_list, page, section_pattern, **kwargs):
 # regex patterns
 
 # identify headers starting with one to three hashes
-re_header = re.compile('^#{1,4} (?:Appendix [A-Z]: )?(.+)\n?$')
+re_header = re.compile(r'^#{1,4} (?:Appendix [A-Z]: )?(.+)\n?$')
 assert re.search(re_header, '## Appendix C: Derivable Traits\n'
                  ).groups() == ('Derivable Traits',)
 # identify passages surrounded by culry quotes
-re_section = re.compile('(?<!\[)“[^”]+”(?!\])', re.MULTILINE)
+re_section = re.compile(r'(?<!\[)“[^”]+”(?!\])', re.MULTILINE)
 section_test = ['“Too high”', '“Too\nslow”', '“Too low”']
 assert re.findall(
     re_section, '“Too high” or “Too\nslow” or “Too low”') == section_test
@@ -122,15 +122,14 @@ assert format_anchor(
     'Specify multiple traits with +') == (
         'specify-multiple-traits-with-')
 # create_entry unit test
-create_e_str = 'Using `Result<T, E>`\n in tests'
-create_e_fname = 'ch11-01-writing-tests'
+create_entry_test = ('Using `Result<T, E>`\n in tests', 'ch11-01-writing-tests')
 create_entry_out = {
     'Using `Result<T, E>` in tests': {
         'filename': 'ch11-01-writing-tests',
         'anchor-id': 'using-resultt-e-in-tests'
     }
 }
-assert create_entry(create_e_str, create_e_fname) == create_entry_out
+assert create_entry(*create_entry_test) == create_entry_out
 # insert_reference unit test
 test_insert = (
     'ch11-01-writing-test',
