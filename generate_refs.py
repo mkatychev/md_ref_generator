@@ -1,6 +1,7 @@
 #! /usr/local/bin/python3
 import re
 import os
+from os.path import join as pjoin
 import argparse
 import sys
 from pprint import pprint
@@ -24,7 +25,7 @@ def create_entry(header, fname):
         'anchor-id': format_anchor(header)}
             }
 
-def gather_reference(fname, page, ref_list, header_pattern, common_headers=['Summary']):
+def gather_reference(fname, page, ref_list, header_pattern, common_headers=['Summary'], **kwargs):
     inside_codeblock = False
     for line in page:
         # strip indention
@@ -34,8 +35,8 @@ def gather_reference(fname, page, ref_list, header_pattern, common_headers=['Sum
             # turn on/off gathering
             inside_codeblock = inside_codeblock ^ True
 
-        if inside_codeblock is False and re.match(re_header, line):
-            formatted_title = re.match(re_header, line).group(1)
+        if inside_codeblock is False and re.match(header_pattern, line):
+            formatted_title = re.match(header_pattern, line).group(1)
             if formatted_title not in common_headers:
                 yield create_entry(formatted_title, fname)
     return
@@ -51,7 +52,12 @@ def insert_reference(fname, ref_list, page, section_pattern, **kwargs):
         quoted_string = quoted_match.group(0)
         match_key = normalize_header(quoted_string).strip('“”')
         # ignore section reference if starts with lowercase
-        if match_key[0].islower() or quoted_string in replaced:
+        # ignore string if white list exists and string in it
+        # if (not kwargs.get('whitelist') or
+                # quoted_string not in kwargs.get('whitelist')):
+        if any([match_key[0].islower(),
+            quoted_string in replaced,
+            (kwargs.get('whitelist') and match_key in kwargs['whitelist'])]):
             continue
         if match_key in ref_list and quoted_string in page:
             # create '#standalone_id' link if reference is on the same page
@@ -73,7 +79,7 @@ def insert_reference(fname, ref_list, page, section_pattern, **kwargs):
                 replaced.add(quoted_string)
                 page_modified = True
         # handle optional flagging of dead links
-        elif kwargs.get('flag_dead_links') or kwargs.get('generate_flaglist'):
+        elif kwargs.get('flag_dead_links') or kwargs.get('save_flags'):
             dead_links.append(quoted_string)
     if not kwargs.get('quiet') and kwargs.get('dry_run'):
         if dry_runs:
@@ -92,12 +98,14 @@ def insert_reference(fname, ref_list, page, section_pattern, **kwargs):
             print(fname + ' dead links:')
             for link in dead_links:
                 print(f'[{link}] is possibly a dead link')
-        if kwargs.get('generate_flaglist'):
+        if kwargs.get('save_flags'):
             return normalized_dead
     elif page_modified:
         return page + '\n'.join(sorted(link_bank)) + '\n'
 
+# # # # # # # # # # # # # # #   
 # regex patterns
+# # # # # # # # # # # # # # #   
 
 # identify headers starting with one to three hashes
 re_header = re.compile('^#{1,4} (?:Appendix [A-Z]: )?(.+)\n?$')
@@ -112,6 +120,7 @@ assert re.findall(
 # # # # # # # # # # # # # # #   
 # Assertion Tests
 # # # # # # # # # # # # # # #   
+
 # format_achor unit test
 assert format_anchor(
     'Preventing Reference Cycles: Turning an Rc<T> into a Weak<T>') == (
@@ -181,10 +190,25 @@ def main(src_input, **kwargs):
     src = []
 
     def generate_filepaths(in_paths):
-        return ((file.replace('.md', ''), os.path.join(in_paths, file))
-                for file in os.listdir(in_paths) if file.endswith('.md'))
+        return ((file.name.rstrip('.md'), pjoin(in_paths, file))
+                for file in os.scandir(in_paths) if
+                file.name.endswith('.md') and file.is_file())
 
-    def generate_flaglist(array, out_file):
+    def parse_whitelist(in_doc):
+        if os.path.exists(in_doc) is False:
+            raise FileNotFoundError('Specified filepath does not exist')
+        with open(in_doc, 'r') as file:
+            whitelist_collection = []
+            for line in file.readlines():
+                line = line.strip()
+                if line.startswith('“') and line.endswith('”'):
+                    whitelist_collection.append(line.strip('“”'))
+            return whitelist_collection
+
+    if kwargs.get('whitelist'):
+        kwargs['whitelist'] = parse_whitelist(kwargs['whitelist'])
+
+    def save_flags(array, out_file):
         assert type(array) != str
         if os.path.exists(out_file):
             raise FileExistsError('there is already a file present')
@@ -219,7 +243,7 @@ def main(src_input, **kwargs):
         with open(doc, 'r') as file:
             str_page = file.read()
         result = insert_reference(fname, heading_list, str_page, re_section, **kwargs)
-        if kwargs.get('generate_flaglist') and result:
+        if kwargs.get('save_flags') and result:
             flaglist_set.update(result)
         # if this is not a dry run or a flaglist is generated and there are results
         elif kwargs.get('dry_run') is False and result:
@@ -228,7 +252,7 @@ def main(src_input, **kwargs):
         del result
     # if a nonzero flaglist collection exists
     if flaglist_set:
-        generate_flaglist(flaglist_set, kwargs['generate_flaglist'])
+        save_flags(flaglist_set, kwargs['save_flags'])
 
 
 if __name__ == '__main__':
@@ -246,14 +270,24 @@ if __name__ == '__main__':
         help='ignore file endings when passing individual files')
     parser.add_argument( '-r', '--references', action='store_true',
         help='display mapped dictionary of genereated references')
-    parser.add_argument('--generate-flaglist', action='store',
+    parser.add_argument('--save-flags', type=str, action='store',
         help='write a line separated list of all dead links to specified filepath')
+    parser.add_argument('--whitelist', type=str, action='store',
+        help='filepath to list of ignored curly quote passages')
+
+    def rel_path(in_str):
+        if in_str:
+            return os.path.realpath(in_str)
+
     args = parser.parse_args()
-    args.generate_flaglist = (lambda x: os.path.realpath(x) if x else None)(args.generate_flaglist)
+    args.save_flags = rel_path(args.save_flags)
+    args.whitelist = rel_path(args.whitelist)
+
     main(args.md_directory,
          flag_dead_links=args.flag_dead_links,
          dry_run=args.dry_run,
          quiet=args.quiet,
          ignore_md=args.ignore_md,
          references=args.references,
-         generate_flaglist=args.generate_flaglist)
+         save_flags=args.save_flags,
+         whitelist=args.whitelist)
