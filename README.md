@@ -68,6 +68,8 @@ produces an output where only references in both files are considered:
 	Conditionals with Match Guards”](#extra-conditionals-with-match-guards)
 	
 ```
+Provide a whitelist text file for passages to ignore and display all remaining potential dead links:
 
-# TODO
-* add whitelist filter intake
+```
+python3 generate_refs.py ./src -f --whitelist ./wlist.txt
+```
