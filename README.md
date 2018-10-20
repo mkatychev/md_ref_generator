@@ -8,7 +8,7 @@ This is a python3 command line utility to automate validating and generating sec
 
 * The process is currently hardcoded to look for anything inside double citation marks and exclude any cited text that is already surrounded by square brackets, ex: `...[“Section Reference”]...` will be ignored.
 
-* Anchor link generation tries to mirror [md-book](https://github.com/rust-lang-nursery/mdBook), see assertion tests for more details.
+* Anchor link generation tries to mirror [md-book](https://github.com/rust-lang-nursery/mdBook), see unit tests for more details.
 
 ```
 usage: generate_refs.py [-h] [-f] [-d] [-q] [-i] [-r]
