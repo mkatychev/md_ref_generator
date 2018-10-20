@@ -12,7 +12,7 @@ This is a python3 command line utility to automate validating and generating sec
 
 ```
 usage: generate_refs.py [-h] [-f] [-d] [-q] [-i] [-r]
-                        [--generate-flaglist GENERATE_FLAGLIST]
+                        [--save-flags SAVE_FLAGS] [--whitelist WHITELIST]
                         md_directory [md_directory ...]
 
 Create and validate rust-book mentions of other sections
@@ -31,9 +31,11 @@ optional arguments:
   -q, --quiet           do not print optional args to console
   -i, --ignore-md       ignore file endings when passing individual files
   -r, --references      display mapped dictionary of genereated references
-  --generate-flaglist GENERATE_FLAGLIST
+  --save-flags SAVE_FLAGS
                         write a line separated list of all dead links to
                         specified filepath
+  --whitelist WHITELIST
+                        filepath to list of ignored curly quote passages
 ```
 
 ## Examples
