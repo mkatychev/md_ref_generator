@@ -128,71 +128,6 @@ section_test = ['“Too high”', '“Too\nslow”', '“Too low”']
 assert re.findall(re_section,
                   '“Too high” or “Too\nslow” or “Too low”') == section_test
 
-# # # # # # # # # # # # # # #
-# unit tests
-# # # # # # # # # # # # # # #
-
-# format_achor unit test
-assert format_anchor(
-    'Preventing Reference Cycles: Turning an Rc<T> into a Weak<T>') == (
-        'preventing-reference-cycles-turning-an-rct-into-a-weakt')
-# it is necessary to strip nonalphas after the hypens to mirror present mdbook
-# functionality when a header string ends with a spaced separated nonalpha
-assert format_anchor('Specify multiple traits with +') == (
-    'specify-multiple-traits-with-')
-# create_entry unit test
-create_entry_test = ('Using `Result<T, E>`\n in tests',
-                     'ch11-01-writing-tests')
-create_entry_out = {
-    'Using `Result<T, E>` in tests': {
-        'filename': 'ch11-01-writing-tests',
-        'anchor-id': 'using-resultt-e-in-tests'
-    }
-}
-assert create_entry(*create_entry_test) == create_entry_out
-# insert_reference unit test
-test_insert = ('ch11-01-writing-test', {
-    'Concatenation with the `+` Operator or the `format!` Macro': {
-        'filename': 'ch08-02-strings',
-        'anchor-id': 'concatenation-with-the--operator-or-the-format-macro'
-    }
-}, ("""You can also add a custom message to be printed with the failure message as
-optional arguments to the `assert!`, `assert_eq!`, and `assert_ne!` macros. Any
-arguments specified after the one required argument to `assert!` or the two
-required arguments to `assert_eq!` and `assert_ne!` are passed along to the
-`format!` macro (discussed in Chapter 8 in the “Concatenation with the `+`
-Operator or the `format!` Macro” section), so you can pass a format string that
-contains `{}` placeholders and values to go in those placeholders. Custom
-messages are useful to document what an assertion means; when a test fails,
-you’ll have a better idea of what the problem is with the code.[“Concatenation
-with the `+` Operator or the `format!` Macro”]
-"""))
-insert_out = (
-    """You can also add a custom message to be printed with the failure message as
-optional arguments to the `assert!`, `assert_eq!`, and `assert_ne!` macros. Any
-arguments specified after the one required argument to `assert!` or the two
-required arguments to `assert_eq!` and `assert_ne!` are passed along to the
-`format!` macro (discussed in Chapter 8 in the [“Concatenation with the `+`
-Operator or the `format!` Macro”][concatenation-with-the--operator-or-the-format-macro] section), so you can pass a format string that
-contains `{}` placeholders and values to go in those placeholders. Custom
-messages are useful to document what an assertion means; when a test fails,
-you’ll have a better idea of what the problem is with the code.[“Concatenation
-with the `+` Operator or the `format!` Macro”]
-[concatenation-with-the--operator-or-the-format-macro]: ch08-02-strings.html#concatenation-with-the--operator-or-the-format-macro
-""")
-
-
-def line_differ(func_in, expected_out):
-    for func, out in zip(func_in.splitlines(), expected_out.splitlines()):
-        if func != out:
-            print('function out:')
-            print(func)
-            print('expected output:')
-            print(out)
-
-
-# print(line_differ(insert_reference(*(test_insert), re_section), insert_out))
-assert insert_reference(*(test_insert), re_section) == insert_out
 
 
 def main(src_input, **kwargs):
@@ -255,12 +190,13 @@ def main(src_input, **kwargs):
             str_page = file.read()
         result = insert_reference(fname, heading_list, str_page, re_section,
                                   **kwargs)
-        if kwargs.get('save_flags') and result:
-            flaglist_set.update(result)
-        # if this is not a dry run or a flaglist is generated and there are results
-        elif kwargs.get('dry_run') is False and result:
-            with open(doc, 'w') as file:
-                file.write(result)
+        if result:
+            if kwargs.get('save_flags'):
+                flaglist_set.update(result)
+            # if this is not a dry run or a flaglist is generated and there are results
+            elif kwargs.get('dry_run') is False:
+                with open(doc, 'w') as file:
+                    file.write(result)
         del result
     # if a nonzero flaglist collection exists
     if flaglist_set:

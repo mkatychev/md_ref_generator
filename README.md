@@ -75,3 +75,6 @@ Provide a whitelist text file for passages to ignore and display all remaining p
 ```
 python3 generate_refs.py ./src -f --whitelist ./wlist.txt
 ```
+
+## Running tests
+Tests use the `unittests` python module, executing tests should be done with `python3 tests.py`
