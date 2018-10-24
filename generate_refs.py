@@ -71,7 +71,7 @@ def insert_reference(fname, ref_list, page, section_pattern, **kwargs):
             section_id = ref_list[match_key]['anchor-id']
             if fname == ref_list[match_key]['filename']:
                 section_link = f'#{section_id}'
-                replace_as = f'[{quoted_string}]\n({section_link})\n'
+                replace_as = f'[{quoted_string}]({section_link})\n'
             else:
                 external_section_link = (
                     f'{ref_list[match_key]["filename"]}.html#{section_id}')
@@ -82,7 +82,7 @@ def insert_reference(fname, ref_list, page, section_pattern, **kwargs):
             if kwargs.get('dry_run'):
                 dry_runs.append((quoted_string, replace_as))
             else:
-                page = re.sub(f'(?<!\[){re.escape(quoted_string)}\s',
+                page = re.sub(f'(?<!\[){re.escape(quoted_string)}\s?',
                               replace_as, page, 1, re.MULTILINE)
                 # print(f'"{quoted_string}"', file=sys.stdout)
                 # print(f'"{replace_as}"', file=sys.stdout)
