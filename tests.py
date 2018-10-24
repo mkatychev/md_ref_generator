@@ -1,3 +1,4 @@
+import sys
 import unittest
 import generate_refs as ref
 
@@ -56,21 +57,28 @@ Operator or the `format!` Macro” section), so you can pass a format string tha
 contains `{}` placeholders and values to go in those placeholders. Custom
 messages are useful to document what an assertion means; when a test fails,
 you’ll have a better idea of what the problem is with the code.[“Concatenation
-with the `+` Operator or the `format!` Macro”]
-"""))
-        _out = ("""You can also add a custom message to be printed with the failure message as
+with the `+` Operator or the `format!` Macro”]"""))
+        expected = ("""You can also add a custom message to be printed with the failure message as
 optional arguments to the `assert!`, `assert_eq!`, and `assert_ne!` macros. Any
 arguments specified after the one required argument to `assert!` or the two
 required arguments to `assert_eq!` and `assert_ne!` are passed along to the
 `format!` macro (discussed in Chapter 8 in the [“Concatenation with the `+`
-Operator or the `format!` Macro”][concatenation-with-the--operator-or-the-format-macro] section), so you can pass a format string that
+Operator or the `format!` Macro”]
+[concatenation-with-the--operator-or-the-format-macro]
+section), so you can pass a format string that
 contains `{}` placeholders and values to go in those placeholders. Custom
 messages are useful to document what an assertion means; when a test fails,
 you’ll have a better idea of what the problem is with the code.[“Concatenation
 with the `+` Operator or the `format!` Macro”]
-[concatenation-with-the--operator-or-the-format-macro]: ch08-02-strings.html#concatenation-with-the--operator-or-the-format-macro
-""")
-        self.assertEqual(ref.insert_reference(*_in, ref.re_section), _out)
+[concatenation-with-the--operator-or-the-format-macro]:
+ch08-02-strings.html#concatenation-with-the--operator-or-the-format-macro""")
+        result = ref.insert_reference(*_in, ref.re_section)
+        # self.line_differ(result, expected)
+        try:
+            self.assertEqual(result, expected)
+        except AssertionError as e:
+            # print(expected)
+            raise e
 
 
 

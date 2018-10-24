@@ -6,6 +6,7 @@ import argparse
 import sys
 from pprint import pprint
 from collections import defaultdict
+from itertools import chain
 
 # This python script is meant to autogenerate markdown links
 # and validate section references for the markdown rust-book
@@ -51,40 +52,40 @@ def gather_reference(fname,
 
 
 def insert_reference(fname, ref_list, page, section_pattern, **kwargs):
+    # if piping to unit test or other module
     page_modified = False
-    replaced = set()
-    link_bank = set()
     dead_refs = []
     dry_runs = []
+    replaced = set()
+    link_bank = set()
     for quoted_match in re.finditer(section_pattern, page):
         quoted_string = quoted_match.group(0)
         match_key = normalize_header(quoted_string).strip('“”')
         # ignore section reference if starts with lowercase
-        # ignore string if white list exists and string in it
-        # if (not kwargs.get('whitelist') or
-        # quoted_string not in kwargs.get('whitelist')):
-        if any([
-                match_key[0].islower(), quoted_string in replaced,
-            (kwargs.get('whitelist') and match_key in kwargs['whitelist'])
-        ]):
+        # ignore string if in white list
+        if match_key[0].islower() or (kwargs.get('whitelist')
+                                      and match_key in kwargs['whitelist']):
             continue
         if match_key in ref_list and quoted_string in page:
             # create '#standalone_id' link if reference is on the same page
             section_id = ref_list[match_key]['anchor-id']
             if fname == ref_list[match_key]['filename']:
                 section_link = f'#{section_id}'
-                replace_as = f'[{quoted_string}]({section_link})'
+                replace_as = f'[{quoted_string}]\n({section_link})\n'
             else:
                 external_section_link = (
                     f'{ref_list[match_key]["filename"]}.html#{section_id}')
-                replace_as = f'[{quoted_string}][{section_id}]'
+                replace_as = f'[{quoted_string}]\n[{section_id}]\n'
                 # append external links to bottom page as last step
-                link_bank.add(f'[{section_id}]: {external_section_link}')
+                link_bank.add(f'[{section_id}]:\n{external_section_link}')
             # handle dry run optional arg
             if kwargs.get('dry_run'):
                 dry_runs.append((quoted_string, replace_as))
             else:
-                page = page.replace(quoted_string, replace_as)
+                page = re.sub(f'(?<!\[){re.escape(quoted_string)}\s',
+                              replace_as, page, 1, re.MULTILINE)
+                # print(f'"{quoted_string}"', file=sys.stdout)
+                # print(f'"{replace_as}"', file=sys.stdout)
                 replaced.add(quoted_string)
                 page_modified = True
         # handle optional flagging of dead links
@@ -110,7 +111,7 @@ def insert_reference(fname, ref_list, page, section_pattern, **kwargs):
         if kwargs.get('save_flags'):
             return normalized_dead
     elif page_modified:
-        return page + '\n'.join(sorted(link_bank)) + '\n'
+        return page + '\n' + '\n'.join(sorted(link_bank))
 
 
 # # # # # # # # # # # # # # #
@@ -127,7 +128,6 @@ re_section = re.compile(r'(?<!\[)“[^”]+”(?!\])', re.MULTILINE)
 section_test = ['“Too high”', '“Too\nslow”', '“Too low”']
 assert re.findall(re_section,
                   '“Too high” or “Too\nslow” or “Too low”') == section_test
-
 
 
 def main(src_input, **kwargs):
