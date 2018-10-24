@@ -57,7 +57,8 @@ Operator or the `format!` Macro” section), so you can pass a format string tha
 contains `{}` placeholders and values to go in those placeholders. Custom
 messages are useful to document what an assertion means; when a test fails,
 you’ll have a better idea of what the problem is with the code.[“Concatenation
-with the `+` Operator or the `format!` Macro”]"""))
+with the `+` Operator or the `format!` Macro”]
+"""))
         expected = ("""You can also add a custom message to be printed with the failure message as
 optional arguments to the `assert!`, `assert_eq!`, and `assert_ne!` macros. Any
 arguments specified after the one required argument to `assert!` or the two
@@ -70,8 +71,10 @@ contains `{}` placeholders and values to go in those placeholders. Custom
 messages are useful to document what an assertion means; when a test fails,
 you’ll have a better idea of what the problem is with the code.[“Concatenation
 with the `+` Operator or the `format!` Macro”]
+
 [concatenation-with-the--operator-or-the-format-macro]:
-ch08-02-strings.html#concatenation-with-the--operator-or-the-format-macro""")
+ch08-02-strings.html#concatenation-with-the--operator-or-the-format-macro
+""")
         result = ref.insert_reference(*_in, ref.re_section)
         # self.line_differ(result, expected)
         try:

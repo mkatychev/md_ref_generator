@@ -111,7 +111,7 @@ def insert_reference(fname, ref_list, page, section_pattern, **kwargs):
         if kwargs.get('save_flags'):
             return normalized_dead
     elif page_modified:
-        return page + '\n' + '\n'.join(sorted(link_bank))
+        return page + '\n' + '\n'.join(sorted(link_bank)) + '\n'
 
 
 # # # # # # # # # # # # # # #
